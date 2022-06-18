@@ -1,0 +1,117 @@
+log-level: debug
+mixed-port: 7890
+redir-port: 7892
+external-controller: 0.0.0.0:9090
+external-ui: ui
+secret: ''
+ipv6: false
+allow-lan: true
+mode: rule
+bind-address: "*"
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+dns:
+  enable: true
+  ipv6: false
+  listen: 0.0.0.0:53
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 1.12.12.12
+    - 8.8.8.8
+  nameserver:
+    - https://dns.google/dns-query
+    - https://1.1.1.1/dns-query
+
+tun:
+  enable: true
+  stack: system
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+    - tcp://any:53
+ 
+proxies:
+  - name: "🇺🇸"
+    type: trojan
+    server: us.server
+    port: 443
+    password: pass
+    udp: true
+
+  - name: "🇸🇬"
+    type: trojan
+    server: sg.server
+    port: 443
+    password: pass
+
+  - name: "🇭🇰"
+    type: trojan
+    server: hk.server
+    port: 443
+    password: pass
+
+  - name: "🇯🇵"
+    type: trojan
+    server: jp.server
+    port: 443
+    password: pass
+
+
+  - name: "🇰🇷"
+    type: trojan
+    server: kr.server
+    port: 443
+    password: pass
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - 🇺🇸
+      - 🇸🇬
+      - 🇭🇰
+      - 🇯🇵
+      - 🇰🇷
+  
+rules:
+      # Foreign Domains
+      - DOMAIN-SUFFIX,eu,Proxy
+      - DOMAIN-SUFFIX,hk,Proxy
+      - DOMAIN-SUFFIX,jp,Proxy
+      - DOMAIN-SUFFIX,kr,Proxy
+      - DOMAIN-SUFFIX,sg,Proxy
+      - DOMAIN-SUFFIX,tw,Proxy
+      - DOMAIN-SUFFIX,uk,Proxy
+      - DOMAIN-SUFFIX,us,Proxy
+
+      # Domain keywords
+      - DOMAIN-KEYWORD,1e100,Proxy
+      - DOMAIN-KEYWORD,abema,Proxy
+      - DOMAIN-KEYWORD,appledaily,Proxy
+      - DOMAIN-KEYWORD,avtb,Proxy
+      - DOMAIN-KEYWORD,beetalk,Proxy
+      - DOMAIN-KEYWORD,blogspot,Proxy
+      - DOMAIN-KEYWORD,dropbox,Proxy
+      - DOMAIN-KEYWORD,facebook,Proxy
+      - DOMAIN-KEYWORD,fbcdn,Proxy
+      - DOMAIN-KEYWORD,github,Proxy
+      - DOMAIN-KEYWORD,gmail,Proxy
+      - DOMAIN-KEYWORD,google,Proxy
+      - DOMAIN-KEYWORD,instagram,Proxy
+      - DOMAIN-KEYWORD,porn,Proxy
+      - DOMAIN-KEYWORD,sci-hub,Proxy
+      - DOMAIN-KEYWORD,spotify,Proxy
+      - DOMAIN-KEYWORD,telegram,Proxy
+      - DOMAIN-KEYWORD,twitter,Proxy
+      - DOMAIN-KEYWORD,whatsapp,Proxy
+
+      - GEOIP,LAN,DIRECT
+      - GEOIP,CN,DIRECT
+
+      # Final
+      - MATCH,Proxy

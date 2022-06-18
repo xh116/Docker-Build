@@ -1,0 +1,13 @@
+#!/command/with-contenv sh
+
+#global var
+INTERFACE=$(ip addr show | awk '/inet.*brd/{print $NF; exit}')
+IP=$(ifconfig $INTERFACE | grep -i mask | awk '{print $2}'| cut -f2 -d:)
+
+ #gfwgen var
+DNS_FWD=${DNS_FWD:-"$IP"}
+DNS_DOMAIN_LIST=${DNS_DOMAIN_LIST:-https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/gfw.txt}
+
+  exec \
+/usr/local/bin/gfwgen-regex -fwd $DNS_FWD -gfwlist-url $DNS_DOMAIN_LIST
+ 

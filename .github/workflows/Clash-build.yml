@@ -1,0 +1,61 @@
+name: Clash build
+
+#on:
+#  push:
+#    branches: [ main ]
+#  pull_request:
+#    branches: [ main ]
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Manual Trigger'
+        required: false
+        default: 'Build'
+        
+env:
+ TZ: Asia/Shanghai
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+        
+      - name: Set variables
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get -y  install jq 
+          echo  "VERSION=$(curl -s https://api.github.com/repos/Dreamacro/clash/releases | jq -r .[]."name" | grep -m1 -E "Premium ([0-9]{1,2}\.?){3,4}$" | sed "s/Premium //")" >> $GITHUB_ENV 
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+      
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          #registry: docker.pkg.github.com
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+        
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: Clash/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+              tinyserve/clash:latest
+              tinyserve/clash:${{ env.VERSION }}

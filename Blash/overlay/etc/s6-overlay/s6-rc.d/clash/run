@@ -1,0 +1,6 @@
+#!/command/with-contenv sh
+
+echo "Starting Clash ..." 
+
+exec \
+/usr/local/bin/clash -d /etc/clash 

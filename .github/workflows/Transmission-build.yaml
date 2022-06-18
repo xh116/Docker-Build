@@ -1,0 +1,56 @@
+name: Transmission build
+
+#on:
+#  push:
+#    branches: [ main ]
+#  pull_request:
+#    branches: [ main ]
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Manual Trigger'
+        required: false
+        default: 'Build'
+        
+env:
+ TZ: Asia/Shanghai
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=today::$(date +'%Y-%m-%d')"
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+      
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          #registry: docker.pkg.github.com
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+        
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: Transmission/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+              tinyserve/transmission:latest

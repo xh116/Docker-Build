@@ -1,0 +1,34 @@
+log-level: info
+mixed-port: 7890
+redir-port: 7892
+external-controller: 0.0.0.0:9090
+external-ui: ui
+secret: ''
+ipv6: false
+allow-lan: true
+mode: rule
+
+
+
+proxies:
+  - name: "🇺🇸"
+    type: trojan
+    server: test.com
+    port: 443
+    password: passwd
+    udp: true
+      - http/1.1
+
+
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies:
+      - 🇺🇸 
+
+rules:
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,DIRECT
+
+  # Final
+  - MATCH,Proxy

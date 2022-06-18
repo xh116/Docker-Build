@@ -1,0 +1,142 @@
+#!/command/with-contenv sh
+ 
+#global var
+INTERFACE=$(ip addr show | awk '/inet.*brd/{print $NF; exit}')
+IP=$(ifconfig $INTERFACE | grep -i mask | awk '{print $2}'| cut -f2 -d:)
+
+# bird config
+ROUTERID=${ROUTERID:-"$IP"}
+OSPF_INTERFACE=${OSPF_INTERFACE:-"$INTERFACE"}
+OSPF_ID=$(ifconfig $INTERFACE | awk '/inet addr/{print $2}' | awk -F. '{print $NF}')
+NEXT=${NEXT:-utun}
+EXCLUDE=${EXCLUDE:-$1}
+IPV6=${IPV6:-false}
+
+if [ ! -f /etc/bird/bird.conf  ] && [ "$IPV6" = 'false' ]; then
+cat > /etc/bird/bird.conf <<EOL
+#log "/var/log/bird.log" { debug, trace, info, remote, warning, error, auth, fatal, bug };
+# debug protocols all;
+log stderr all;
+router id ${ROUTERID};
+ipv4 table master4;
+protocol device {
+    scan time 60;
+}
+protocol kernel kernel4 {
+    ipv4 {
+        import none;
+        export all;
+       };
+}
+protocol static static4 {
+    ipv4 {
+        };
+    include "/etc/bird/routes4.conf";
+}
+protocol ospf v2 {
+    ipv4 {
+     export all;
+     };
+area 0 {
+        interface "${OSPF_INTERFACE}" {
+            type ptp;       
+            cost 10;         
+            hello 10; 
+        };
+        interface  "*tun*" {
+           cost 100;
+           stub yes;
+        };
+    };
+}
+EOL
+ 
+fi 
+
+if [ ! -f /etc/bird/bird.conf  ] && [ "$IPV6" = 'true' ]; then
+ cat > /etc/bird/bird.conf <<EOL
+#log "/var/log/bird.log" { debug, trace, info, remote, warning, error, auth, fatal, bug };
+# debug protocols all;
+log stderr all;
+router id ${ROUTERID};
+ipv4 table master4;
+ipv6 table master6;
+protocol device {
+    scan time 60;
+}
+protocol kernel kernel4 {
+    ipv4 {
+        import none;
+        export all;
+       };
+}
+protocol kernel kernel6 {
+    ipv6 {
+        import none;
+        export all;
+      };
+}
+protocol static static4 {
+    ipv4 {
+        };
+    include "/etc/bird/routes4.conf";
+}
+protocol static static6 {
+ ipv6 {
+        };
+    include "/etc/bird/routes6.conf";
+}
+protocol ospf v2 {
+    ipv4 {
+     export all;
+     };
+area 0 {
+        interface "${OSPF_INTERFACE}" {
+            type ptp;       
+            cost 10;         
+            hello 10; 
+        };
+        interface  "*tun*" {
+           cost 100;
+           stub yes;
+        };
+    };
+}
+protocol ospf v3 {
+    ipv6 {
+     export all;
+     };
+area 0 {
+        interface "${OSPF_INTERFACE}" {
+            type ptp;       
+            cost 10;         
+            hello 10; 
+        };
+        interface  "*tun*" {
+           cost 100;
+           stub yes;
+        };
+    };
+}
+EOL
+sysctl -w net.ipv6.conf.all.forwarding=1
+sysctl -w net.ipv6.conf.all.disable_ipv6=0
+fi  
+
+if [ -n   "$OSPF_AUTH" ]  &&  ! grep -q  'authentication' /etc/bird/bird.conf; then
+   sed -i  "s/type ptp;/&\n            authentication  cryptographic;\n            password \"${OSPF_AUTH}\" { id ${OSPF_ID};  algorithm keyed md5; };/" /etc/bird/bird.conf
+   sed -i  "s/protocol ospf v2 {/&\n    instance id "${OSPF_ID}";/" /etc/bird/bird.conf
+   echo "OSPF authentication and Instance ID are enabled, password is ${OSPF_AUTH}, Instance ID is ${OSPF_ID}"
+fi
+
+# gen routes4.conf && routes6.conf
+if [ ! -f  /etc/bird/routes4.conf ]; then
+  cd /nchnroutes && python3 produce.py --next ${NEXT} --exclude ${EXCLUDE}
+  mv /nchnroutes/routes4.conf /nchnroutes/routes6.conf -t /etc/bird/
+fi  
+
+
+echo "Starting BIRD ..."
+
+exec \
+ /usr/local/sbin/bird -s /var/run/bird/bird.ctl -d -c /etc/bird/bird.conf

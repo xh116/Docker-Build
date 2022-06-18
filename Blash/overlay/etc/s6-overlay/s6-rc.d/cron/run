@@ -1,0 +1,18 @@
+#!/command/with-contenv sh
+ 
+NEXT=${NEXT:-utun}
+CHINA_ROUTES_LIST=${CHINA_ROUTES_LIST:-https://raw.githubusercontent.com/17mon/china_ip_list/master/china_ip_list.txt}
+
+# crate cron job
+if ! grep -q nchnroutes /etc/crontabs/root; then
+cat > /etc/crontabs/root <<EOL
+ 0 3 * * 0 \
+ curl -sSfL --retry 3 https://ftp.apnic.net/stats/apnic/delegated-apnic-latest -o /nchnroutes/delegated-apnic-latest && \
+ curl -sSfL --retry 3 ${CHINA_ROUTES_LIST} -o /nchnroutes/china_ip_list.txt && \
+ cd /nchnroutes && python3 produce.py --next ${NEXT} --exclude ${EXCLUDE} && \
+ mv /nchnroutes/routes4.conf /nchnroutes/routes6.conf -t /etc/bird/ && birdc configure 
+EOL
+fi
+
+exec \
+/usr/sbin/crond -f
